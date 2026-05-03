@@ -1,0 +1,41 @@
+name: Deploy to AWS (Fly)
+
+# 発動条件：このブランチに変更が保存(push)された時
+on:
+  push:
+    branches:
+      - master
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: 1. 設計図（コード）をロボットの作業台に取り出す
+        uses: actions/checkout@v3
+
+      - name: 2. 調理器具（Node.js）を準備する
+        uses: actions/setup-node@v3
+        with:
+          node-version: '16'
+
+      - name: 3. 材料（パッケージ）を買い集める
+        run: npm install
+
+      - name: 4. ユドナリウムを調理（ビルド）する
+        run: npm run build
+
+      - name: 5. AWSの合鍵を取り出す
+        uses: aws-actions/configure-aws-credentials@v2
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ap-northeast-1
+
+      - name: 6. S3倉庫へ配達する（古いファイルは自動削除）
+        run: |
+          aws s3 sync ./dist s3://fly.ninja43/ --delete
+
+      - name: 7. 受付嬢（CloudFront）の記憶をリセットする
+        run: |
+          aws cloudfront create-invalidation --distribution-id EQN7ZO7SDBT92 --paths "/*"
